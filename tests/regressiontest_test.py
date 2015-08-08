@@ -5,8 +5,22 @@ RegressionTestTest
 """
 
 import unittest
+import json
 
 class RegressionTestTest(unittest.TestCase):
 
-    def testLoadTests():
+    jsonTestPath = "regressiontests/jsontest.json"
+
+
+    def setup(self):
+        self.testJson = json.load(jsonTestPath)
+
+
+    def testCreateTests():
+        pass
+
+
+    def testRunTestsAgainstJson():
+        #try:
+        #    regressiontest.
         pass

@@ -8,80 +8,155 @@ for saving, loading, and comparing the state
 of code. This module is built upon the json
 library, and relies on pickle API implementations.
 
+Logs are stored at tests/regressiontests/logs/
+
 @author T.J. Trimble <trimblet@me.com>
 """
 
 import json
+from regressiontest import constants
 
-class RegressionTest(object):
+def createTestFromObjectWithList(filename, data, function, name):
     """
-    RegressionTest
+    Run the specified function on the specified data,
+    saving the results in JSON format to the specified
+    filename.
 
-    This class provides methods for saving, loading and
-    comparing the state of code.
+    This method takes a function which returns an
+    object, applies to the specified iterable, and
+    saves the result.
     """
+    results = (function(item).dumps() for item in data)
+    _createTest(filename, data, results, function, name, constants.objectName)
 
-    input_key = 'Input'
-    expected_key = 'Expected'
 
-    success = "."
-    failure = "F"
-    error = "E"
+def createTestFromObjectFromItem(filename, item, function, name):
+    """
+    Run the specified function on the specified data,
+    saving the results in JSON format to the specified
+    filename.
 
-    
-    def createtest(self, filename, data, function):
-        """
-        
-        """
-        try:
-            output = function(data)
-        except Exception e:
-            raise RuntimeError("Running function \"{}\" on data failed with Exception {} \ndata: {}".format(function,e,data))
-        try:
-            with open(filename, 'w') as fd:
-                fd.write(output)
-        except FileNotFoundError e:
-            raise e
+    This method takes a function which returns an
+    object, applies it to the specified input,
+    and saves the result.
+    """
+    createTestFromObjectWithList(filename, (item,), function, name, constants.objectName)
 
-        
 
-    def runtest(self, filename, function):
-        """
-        Load the JSON data from the given filename,
-        run the given function on the input data,
-        and compare it to the expected output.
-        """
-        data = json.load(filename)
-        failures = []
-        for json in data:
-            try:
-                expected = json[RegressionRest.expected_key]
-                result = function(json[RegressionTest.input_key])
-                if result == expected:
-                    print(RegressionTest.success, end='')
-                else:
-                    print(RegressionTest.failure, end='')
-                    failures.add(Failure(expected, result))
-            except Exception e:
-                print(RegressionTest.error, end='')
-                failures.add(Error(expected, e))
+def createTestFromJsonWithList(filename, data, function, name):
+    """
+    Run the specified function on the specified data,
+    saving the results in JSON format to the specified
+    filename.
 
-        # Report failures
-        for failure in failures:
-            print(failure.report())
-            
-        
+    This method takes a function which returns a JSON
+    Object or JSON Array, applies it to the specified
+    input, and saves the result.
+    """
+    results = (function(item) for item in data)
+    _createTest(filename, data, results, function, name, constants.jsonName)
 
-    def _loadtest(self, json):
-        """
-        Load the given JSON data.
-        The JSON data must be a JSON Array, where
-        each item is a JSON Object with two keys:
 
-            "Input"
-            "Expected"
-        """
-        pass        
+def createTestFromJsonFromItem(filename, item, function, name):
+    """
+    Run the specified function on the specified data,
+    saving the results in JSON format to the specified
+    filename.
 
-    
+    This method takes a function which returns a JSON
+    Object or JSON Array, applies it to the specified
+    input, and saves the result.
+    """
+    createTestFromObjectWithList(filename, (item,), function, name, constants.jsonName)
 
+
+def _createTest(filename, data, generator, function, name, typeName):
+    """
+    Given a filename, generator, and function, run
+    the function and save the results to file.
+
+    The generator should return a sequence of JSON
+    Objects or JSON Arrays.
+    """
+    try:
+        results = json.loads(str(list(generator)))
+    except Exception as e:
+        raise RuntimeError("Running function \"{}\" on data failed with Exception {} \ndata: {}".format(function,e,data))
+    output = {
+        constants.inputKey: data,
+        constants.expectedKey: results,
+        constants.nameKey: name,
+        constants.typeKey: typeName
+    }
+    try:
+        with open(filename, 'a') as fd:
+            fd.write(output)
+    except FileNotFoundError as e:
+        raise e
+
+
+
+def runTest(filename):
+    # Load test
+
+    # Run the appropriate method depending if test is JSON or Object test
+
+    pass
+
+
+
+def runTestAgainstObject(self, filename, function, loader):
+    """
+    Load the JSON data from the given filename,
+    run the given function on the input data,
+    and compare the result of the function
+    to the object representation built by the
+    loader reading the expected JSON.
+    """
+    data = json.load(filename)
+    results = []
+    for json in data:
+        results.add(_runtest(json, function, loader(json[constants.expectedKey])))
+
+    for result in results:
+        print(result.report())
+
+
+def runTestAgainstJson(filename, function):
+    """
+    Load the JSON data from the given filename,
+    run the given function on the input data,
+    and compare the result of the function
+    to the JSON stored in the file.
+    """
+    data = json.load(filename)
+    results = []
+    for json in data:
+        results.add(_runtest(json, function, json[constants.expectedKey]))
+
+    for result in results:
+        print(result.report())
+
+
+def _runtest(json, function, expected):
+    try:
+        result = function(json[constants.inputKey])
+        if result == expected:
+            print(constants.success, end='')
+            return Success()
+        else:
+            print(constants.failure, end='')
+            return Failure(expected, result)
+    except Exception as e:
+        print(constants.error, end='')
+        return Error(expected, e)
+
+
+def deleteTest(name):
+    # Open file
+
+    # Load file
+
+    # Remove name
+    data = (item for item in data if item[regressiontest.nameKey] != name)
+    # Write file
